@@ -67,7 +67,8 @@ public:
 	}
 	double timeDiff(struct timespec *start, struct timespec *end) {
 		return (double)(end->tv_sec - start->tv_sec ) +
-				(double)(end->tv_nsec - start->tv_nsec) * oobillion;
+				(double)(end->tv_nsec - start->tv_nsec) 
+				* oobillion;
 	}
 	void timeCopy(struct timespec *dest, struct timespec *source) {
 		memcpy(dest, source, sizeof(struct timespec));
@@ -309,7 +310,38 @@ void checkMouse(XEvent *e)
 		savey = e->xbutton.y;
 	}
 }
+void screenCapture()
+{
+    	static int num=0;
+	unsigned char *data = new unsigned char[gl.xres*gl.yres*3];
+	glReadPixels(0,0,gl.xres, gl.yres, GL_RGB, GL_UNSIGNED_BYTE, data);
+	char ts[64];
+	sprintf(ts, "pic%03i", num++);
+	FILE *fpo = fopen(ts, "w");
+	if (fpo) {
+		fprintf(fpo, "P6\n");
+		fprintf(fpo, "%i %i\n", gl.xres, gl.yres);
+		fprintf(fpo, "255\n");
+		unsigned char *p = data;
+		p += ((gl.yres - 1) * gl.xres*3);
+		//code for verticall flipped image
+		//for (int i=0; i<gl.xres*gl.yres*3; i++) 
+		//    fprintf(fpo, "%c", *(p+i));
+		//upright image. seems to work.
+		for (int i=0; i<gl.yres; i++) {
+		   for (int j=0; j<gl.xres*3; j++) {
+		       fprintf(fpo, "%c", *(p+j));
+		   }
+		   p = p - (gl.xres*3);
+		}
 
+
+		fclose(fpo);
+	}
+
+	delete [] data;
+
+}
 void checkKeys(XEvent *e)
 {
 	//keyboard input?
@@ -332,6 +364,9 @@ void checkKeys(XEvent *e)
 	}
 	if (shift) {}
 	switch (key) {
+		case XK_s:
+			screenCapture();
+		    	break;
 		case XK_w:
 			timers.recordTime(&timers.walkTime);
 			gl.walk ^= 1;
@@ -425,17 +460,7 @@ void render(void)
 		glVertex2i(gl.xres,   0);
 		glVertex2i(0,         0);
 	glEnd();
-	//
-	//fake shadow
-	//glColor3f(0.25, 0.25, 0.25);
-	//glBegin(GL_QUADS);
-	//	glVertex2i(cx-60, 150);
-	//	glVertex2i(cx+50, 150);
-	//	glVertex2i(cx+50, 130);
-	//	glVertex2i(cx-60, 130);
-	//glEnd();
-	//
-	//show boxes as background
+
 	for (int i=0; i<20; i++) {
 		glPushMatrix();
 		glTranslated(gl.box[i][0],gl.box[i][1],gl.box[i][2]);
@@ -496,6 +521,7 @@ void render(void)
 	ggprint8b(&r, 16, c, "-   slower");
 	ggprint8b(&r, 16, c, "right arrow -> walk right");
 	ggprint8b(&r, 16, c, "left arrow  <- walk left");
+	ggprint8b(&r, 16, c, "S <- Screen Print");
 	ggprint8b(&r, 16, c, "frame: %i", gl.walkFrame);
 }
 
